@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0806" />
+  <title>Логово — Что сегодня?</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #0a0806;
+      --gold: #c9a227;
+      --gold-bright: #f0debc;
+      --gold-dim: #8a6d17;
+      --mist: #a89778;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--mist);
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      user-select: none;
+      overflow-x: hidden;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse at top, rgba(201,162,39,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at bottom, rgba(139,20,20,0.06) 0%, transparent 60%),
+        var(--bg);
+    }
+
+    .app {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 20px 20px 32px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header { text-align: center; margin-bottom: 12px; }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold-bright);
+      margin: 0 0 4px;
+      text-shadow: 0 0 20px rgba(201,162,39,0.3);
+    }
+    .header p {
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--mist);
+      margin: 0;
+      opacity: 0.75;
+    }
+
+    /* ── Колесо ─────────────────── */
+    .wheel-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      margin: 12px auto 20px;
+      max-width: 360px;
+    }
+
+    .wheel-wrap svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      transition: transform 4.5s cubic-bezier(0.17, 0.67, 0.16, 1);
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6));
+    }
+
+    /* Указатель сверху */
+    .pointer {
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 22px solid var(--gold);
+      filter: drop-shadow(0 2px 6px rgba(201,162,39,0.6));
+      z-index: 5;
+    }
+
+    /* Центральная кнопка */
+    .hub {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      border: 2px solid var(--gold);
+      background: radial-gradient(circle at 35% 30%, #3d2e15 0%, #1a1207 100%);
+      display: grid;
+      place-items: center;
+      color: var(--gold-bright);
+      font-size: 26px;
+      box-shadow:
+        0 0 0 4px rgba(10,8,6,0.9),
+        0 4px 20px rgba(201,162,39,0.4);
+      z-index: 4;
+    }
+
+    /* ── Кнопка ─────────────────── */
+    .spin-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(180deg, #f0debc 0%, #c9a227 100%);
+      color: #1a140e;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        0 6px 20px rgba(201,162,39,0.3);
+    }
+    .spin-btn:active { transform: scale(0.98); }
+    .spin-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Результат ─────────────── */
+    .result {
+      margin-top: 18px;
+      padding: 22px 18px;
+      border-radius: 16px;
+      border: 1.5px solid rgba(201,162,39,0.4);
+      background: linear-gradient(180deg, rgba(201,162,39,0.06) 0%, rgba(20,16,12,0.85) 100%);
+      text-align: center;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s, transform 0.4s;
+      pointer-events: none;
+    }
+    .result.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .result .label {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+    .result .prize {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gold-bright);
+      line-height: 1.25;
+    }
+    .result .emoji {
+      font-size: 40px;
+      display: block;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.7));
+    }
+
+    .spacer { flex: 1; }
+
+    .footer-link {
+      display: block;
+      text-align: center;
+      margin-top: 22px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(201,162,39,0.25);
+      color: var(--gold-bright);
+      text-decoration: none;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .footer-link:hover { border-color: rgba(201,162,39,0.5); background: rgba(201,162,39,0.05); }
+
+    .footer-copy {
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--mist);
+      opacity: 0.5;
+      padding-top: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>Что сегодня в Логово?</h1>
+      <p>Крути — судьба решит</p>
+    </div>
+
+    <div class="wheel-wrap">
+      <div class="pointer"></div>
+      <svg id="wheel" viewBox="0 0 400 400"></svg>
+      <div class="hub">🎯</div>
+    </div>
+
+    <button class="spin-btn" id="spinBtn">Крутить</button>
+
+    <div class="result" id="result">
+      <div class="label">Тебе выпало</div>
+      <div class="prize" id="prizeText"></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <a class="footer-link" id="slotLink" href="./index.html">
+      🎰 Сыграть в слот на приз
+    </a>
+    <div class="footer-copy">Логово · кальян · чай · бар</div>
+  </div>
+
+  <script>
+    // ── Telegram init ───────────────────────
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor?.("#0a0806");
+      tg.setBackgroundColor?.("#0a0806");
+    }
+
+    // ── Пункты колеса (10 штук) ─────────────
+    // 👇 Меняй текст/эмодзи здесь — колёса перестроится автоматически
+    const ITEMS = [
+      { emoji: "🚬", text: "Курить кальян" },
+      { emoji: "🎮", text: "Играть в доту" },
+      { emoji: "🥃", text: "Курить кальян" },
+      { emoji: "🍵", text: "Играть в доту" },
+      { emoji: "🎲", text: "Курить кальян" },
+      { emoji: "🍸", text: "Играть в доту" },
+      { emoji: "💰", text: "Курить кальян" },
+      { emoji: "🎺", text: "Играть в доту" },
+      { emoji: "📸", text: "Курить кальян" },
+      { emoji: "🔄", text: "Крутить ещё раз" },
+    ];
+
+    const COLORS = [
+      "#1a1207", "#2a1e0e", "#1a1207", "#2a1e0e", "#1a1207",
+      "#2a1e0e", "#1a1207", "#2a1e0e", "#1a1207", "#2a1e0e",
+    ];
+    const TEXT_COLOR = "#f0debc";
+
+    const CX = 200;
+    const CY = 200;
+    const R = 190;
+    const N = ITEMS.length;
+    const SECTOR = (2 * Math.PI) / N;
+
+    // ── Генерация SVG колеса ────────────────
+    function buildWheel() {
+      const svg = document.getElementById("wheel");
+      const parts = [];
+
+      // Внешнее кольцо
+      parts.push(`<circle cx="${CX}" cy="${CY}" r="${R + 4}" fill="none" stroke="#c9a227" stroke-width="2" opacity="0.6"/>`);
+      parts.push(`<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.3"/>`);
+
+      for (let i = 0; i < N; i++) {
+        // SVG-координаты: 0° сверху, по часовой
+        const a0 = -Math.PI / 2 + i * SECTOR;
+        const a1 = -Math.PI / 2 + (i + 1) * SECTOR;
+
+        const x0 = CX + R * Math.cos(a0);
+        const y0 = CY + R * Math.sin(a0);
+        const x1 = CX + R * Math.cos(a1);
+        const y1 = CY + R * Math.sin(a1);
+
+        // Сектор
+        parts.push(`<path d="M ${CX} ${CY} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${R} ${R} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z" fill="${COLORS[i]}" stroke="#c9a227" stroke-width="1" stroke-opacity="0.35"/>`);
+
+        // Текст
+        const midA = a0 + SECTOR / 2;
+        const textR = R * 0.68;
+        const tx = CX + textR * Math.cos(midA);
+        const ty = CY + textR * Math.sin(midA);
+        const deg = (midA * 180 / Math.PI) + 90; // тексты "вдоль радиуса"
+
+        const item = ITEMS[i];
+        parts.push(`<g transform="translate(${tx.toFixed(2)}, ${ty.toFixed(2)}) rotate(${deg.toFixed(2)})">
+          <text x="0" y="-6" text-anchor="middle" font-size="22" font-family="Apple Color Emoji, Segoe UI Emoji">${item.emoji}</text>
+          <text x="0" y="14" text-anchor="middle" font-size="11" font-weight="700" fill="${TEXT_COLOR}" font-family="-apple-system, Segoe UI, Roboto, sans-serif" letter-spacing="0.5">${item.text.toUpperCase()}</text>
+        </g>`);
+      }
+
+      svg.innerHTML = parts.join("");
+    }
+
+    buildWheel();
+
+    // ── Логика вращения ─────────────────────
+    const spinBtn = document.getElementById("spinBtn");
+    const wheel = document.getElementById("wheel");
+    const result = document.getElementById("result");
+    const prizeText = document.getElementById("prizeText");
+
+    let rotation = 0;       // текущий угол
+    let spinning = false;
+
+    function spin() {
+      if (spinning) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      spinBtn.textContent = "Крутится...";
+      result.classList.remove("show");
+
+      // Случайный сектор-победитель
+      const winner = Math.floor(Math.random() * N);
+
+      // Считаем, куда надо повернуть, чтобы победитель оказался под указателем (сверху)
+      // Победитель изначально центрируется на midAngle = -90° + (winner + 0.5) * 36°
+      // Чтобы он оказался на -90° (сверху), нужно повернуть на -(winnerMid - (-90°)) + полные обороты
+      const midDeg = (winner + 0.5) * (360 / N);
+      const targetAlign = -midDeg;
+      const fullSpins = 4 + Math.floor(Math.random() * 3); // 4–6 оборотов
+      const targetRotation = rotation + fullSpins * 360 + (targetAlign - (rotation % 360));
+
+      wheel.style.transform = `rotate(${targetRotation}deg)`;
+      rotation = targetRotation;
+
+      // Haptic
+      tg?.HapticFeedback?.impactOccurred?.("heavy");
+
+      setTimeout(() => {
+        const item = ITEMS[winner];
+        prizeText.innerHTML = `<span class="emoji">${item.emoji}</span>${item.text}`;
+        result.classList.add("show");
+        spinBtn.disabled = false;
+        spinBtn.textContent = "Крутить ещё";
+        spinning = false;
+
+        tg?.HapticFeedback?.notificationOccurred?.("success");
+      }, 4600);
+    }
+
+    spinBtn.addEventListener("click", spin);
+  </script>
+</body>
+</html>
