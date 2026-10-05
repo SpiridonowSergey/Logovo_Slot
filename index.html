@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0806" />
+  <title>Логово — Однорукий бандит</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #0a0806;
+      --bg-2: #14100c;
+      --gold: #c9a227;
+      --gold-bright: #f0debc;
+      --gold-dim: #8a6d17;
+      --mist: #a89778;
+      --red: #b91c1c;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--mist);
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      user-select: none;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse at top, rgba(201,162,39,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at bottom, rgba(139,20,20,0.06) 0%, transparent 60%),
+        var(--bg);
+    }
+
+    .app {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 24px 20px 32px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .header .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(201,162,39,0.4);
+      margin: 0 auto 10px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      background: rgba(20,16,12,0.8);
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold-bright);
+      margin: 0 0 6px;
+      text-shadow: 0 0 20px rgba(201,162,39,0.3);
+    }
+
+    .header p {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--mist);
+      margin: 0;
+      opacity: 0.75;
+    }
+
+    /* ── Барабаны ───────────────────── */
+    .machine {
+      position: relative;
+      border-radius: 20px;
+      border: 1.5px solid rgba(201,162,39,0.25);
+      background: linear-gradient(180deg, rgba(28,22,16,0.9) 0%, rgba(14,10,7,0.95) 100%);
+      padding: 20px 14px;
+      margin-bottom: 20px;
+      box-shadow:
+        inset 0 1px 0 rgba(240,222,188,0.06),
+        0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    .reels {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .reel {
+      position: relative;
+      aspect-ratio: 1 / 1.15;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #1a140e 0%, #0e0906 100%);
+      border: 1px solid rgba(201,162,39,0.18);
+      display: grid;
+      place-items: center;
+      font-size: 44px;
+      overflow: hidden;
+      box-shadow: inset 0 4px 12px rgba(0,0,0,0.6);
+    }
+
+    .reel .symbol {
+      transition: transform 0.08s linear, opacity 0.08s linear;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+    }
+
+    .reel.spinning .symbol {
+      animation: blurSpin 0.08s linear infinite;
+    }
+
+    @keyframes blurSpin {
+      0%   { transform: translateY(0) scale(1);   opacity: 1; }
+      50%  { transform: translateY(-10px) scale(0.9); opacity: 0.6; }
+      100% { transform: translateY(0) scale(1);   opacity: 1; }
+    }
+
+    .reel.win {
+      border-color: rgba(201,162,39,0.6);
+      box-shadow:
+        inset 0 4px 12px rgba(0,0,0,0.6),
+        0 0 24px rgba(201,162,39,0.4);
+      animation: winPulse 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes winPulse {
+      from { box-shadow: inset 0 4px 12px rgba(0,0,0,0.6), 0 0 16px rgba(201,162,39,0.3); }
+      to   { box-shadow: inset 0 4px 12px rgba(0,0,0,0.6), 0 0 32px rgba(201,162,39,0.7); }
+    }
+
+    /* ── Кнопка ───────────────────── */
+    .spin-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(180deg, #f0debc 0%, #c9a227 100%);
+      color: #1a140e;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.4),
+        0 6px 20px rgba(201,162,39,0.3);
+    }
+
+    .spin-btn:active { transform: scale(0.98); }
+    .spin-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Результат ─────────────────── */
+    .result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 16px;
+      border: 1.5px solid rgba(201,162,39,0.4);
+      background: linear-gradient(180deg, rgba(201,162,39,0.06) 0%, rgba(20,16,12,0.8) 100%);
+      text-align: center;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s, transform 0.4s;
+      pointer-events: none;
+    }
+
+    .result.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .result .label {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+
+    .result .prize {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gold-bright);
+      margin-bottom: 4px;
+    }
+
+    .result .desc {
+      font-size: 13px;
+      color: var(--mist);
+      margin-bottom: 14px;
+    }
+
+    .code {
+      display: inline-block;
+      font-family: "Courier New", monospace;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--gold-bright);
+      background: rgba(0,0,0,0.45);
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px dashed rgba(201,162,39,0.5);
+      margin-top: 6px;
+    }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--mist);
+      opacity: 0.7;
+      line-height: 1.4;
+    }
+
+    .spacer { flex: 1; }
+
+    .footer {
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--mist);
+      opacity: 0.5;
+      padding-top: 20px;
+    }
+
+    /* Пустое состояние "уже играл сегодня" */
+    .wait {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--mist);
+    }
+
+    .wait .big {
+      font-size: 40px;
+      margin-bottom: 16px;
+    }
+
+    .wait h2 {
+      color: var(--gold-bright);
+      font-size: 18px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+
+    .wait p {
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0.8;
+      margin: 0 0 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+
+    <div class="header">
+      <div class="logo">🎩</div>
+      <h1>Однорукий бандит</h1>
+      <p>Испытай удачу в Логово</p>
+    </div>
+
+    <!-- Экран игры -->
+    <div id="gameScreen">
+      <div class="machine">
+        <div class="reels">
+          <div class="reel" data-reel="0"><span class="symbol">🎩</span></div>
+          <div class="reel" data-reel="1"><span class="symbol">🎩</span></div>
+          <div class="reel" data-reel="2"><span class="symbol">🎩</span></div>
+        </div>
+        <button class="spin-btn" id="spinBtn">Крутить</button>
+      </div>
+
+      <div class="result" id="result">
+        <div class="label">Твой приз</div>
+        <div class="prize" id="prizeName"></div>
+        <div class="desc" id="prizeDesc"></div>
+        <div class="code" id="promoCode"></div>
+        <div class="hint">
+          Покажи этот код официанту.<br>
+          Действует сегодня до конца дня.
+        </div>
+      </div>
+    </div>
+
+    <!-- Экран "уже играл сегодня" -->
+    <div id="waitScreen" style="display: none;">
+      <div class="wait">
+        <div class="big">⏳</div>
+        <h2>Возвращайся завтра</h2>
+        <p>Один прокрут в день.</p>
+        <p>Новый шанс — в 00:00.</p>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="footer">Логово · Кальян · Чай · Бар</div>
+  </div>
+
+  <script>
+    // ── Telegram WebApp init ─────────────────────
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      tg.setHeaderColor?.("#0a0806");
+      tg.setBackgroundColor?.("#0a0806");
+    }
+
+    // ── Данные ───────────────────────────────────
+    const SYMBOLS = ["🎩", "🚬", "🥃", "💰", "🎲", "🎺"];
+
+    // Таблица призов: сколько одинаковых, шанс, что даёт
+    // weight — условный вес (не проценты)
+    const PRIZES = [
+      { match: 3, symbol: "🎩", weight: 1,  name: "ДЖЕКПОТ",   desc: "Кальян в подарок",           code: "JACK" },
+      { match: 3, symbol: "🥃", weight: 3,  name: "Скидка 25%", desc: "На весь бар и кальяны",      code: "BAR25" },
+      { match: 3, symbol: "💰", weight: 4,  name: "Скидка 20%", desc: "На любой заказ",             code: "ALL20" },
+      { match: 3, symbol: "🚬", weight: 5,  name: "Скидка 15%", desc: "На кальян",                  code: "HOOK15" },
+      { match: 3, symbol: "🎲", weight: 6,  name: "Скидка 15%", desc: "На напитки бара",            code: "BAR15" },
+      { match: 3, symbol: "🎺", weight: 6,  name: "Скидка 15%", desc: "На любой заказ",             code: "ALL15" },
+      { match: 2, symbol: null, weight: 15, name: "Чай в подарок", desc: "Чайник чая к вашему столу", code: "TEA" },
+      { match: 2, symbol: null, weight: 15, name: "Скидка 10%", desc: "На любой заказ",             code: "ALL10" },
+      { match: 1, symbol: null, weight: 20, name: "Почти!",     desc: "Ещё чуть-чуть — и джекпот",  code: null },
+      { match: 0, symbol: null, weight: 25, name: "Не сегодня", desc: "Повезёт в следующий раз",    code: null },
+    ];
+
+    // ── Утилиты ──────────────────────────────────
+    function pickWeighted(arr) {
+      const total = arr.reduce((s, x) => s + x.weight, 0);
+      let r = Math.random() * total;
+      for (const item of arr) {
+        r -= item.weight;
+        if (r <= 0) return item;
+      }
+      return arr[arr.length - 1];
+    }
+
+    function randomSymbol() {
+      return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+    }
+
+    function generateCode(prefix) {
+      if (!prefix) return null;
+      const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+      let tail = "";
+      for (let i = 0; i < 5; i++) {
+        tail += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return `${prefix}-${tail}`;
+    }
+
+    // Спин: сначала выбираем приз, потом подстраиваем символы
+    function generateSpin() {
+      const prize = pickWeighted(PRIZES);
+
+      if (prize.match === 3 && prize.symbol) {
+        return { reels: [prize.symbol, prize.symbol, prize.symbol], prize };
+      }
+
+      if (prize.match === 2) {
+        const s = randomSymbol();
+        const other = SYMBOLS.filter((x) => x !== s)[Math.floor(Math.random() * (SYMBOLS.length - 1))];
+        // Два одинаковых + один другой
+        const reels = [s, s, other];
+        // Перемешаем
+        for (let i = reels.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [reels[i], reels[j]] = [reels[j], reels[i]];
+        }
+        return { reels, prize };
+      }
+
+      // match 0 или 1 — все разные (или так, что два не совпадают)
+      let reels;
+      do {
+        reels = [randomSymbol(), randomSymbol(), randomSymbol()];
+      } while (
+        reels[0] === reels[1] &&
+        reels[1] === reels[2]
+      ); // избегаем случайного джекпота
+
+      return { reels, prize };
+    }
+
+    // ── Логика игры ──────────────────────────────
+    const spinBtn = document.getElementById("spinBtn");
+    const result = document.getElementById("result");
+    const prizeName = document.getElementById("prizeName");
+    const prizeDesc = document.getElementById("prizeDesc");
+    const promoCode = document.getElementById("promoCode");
+    const reelEls = [...document.querySelectorAll(".reel")];
+
+    let spinning = false;
+
+    function setReel(el, symbol) {
+      const span = el.querySelector(".symbol");
+      span.textContent = symbol;
+    }
+
+    function animateSpin(reels) {
+      return new Promise((resolve) => {
+        reelEls.forEach((el) => el.classList.add("spinning"));
+        result.classList.remove("show");
+
+        const startTime = Date.now();
+        const duration = 1600;
+
+        const interval = setInterval(() => {
+          reelEls.forEach((el) => setReel(el, randomSymbol()));
+        }, 70);
+
+        // Остановка по одному
+        reels.forEach((symbol, i) => {
+          const stopAt = startTime + 900 + i * 350;
+          setTimeout(() => {
+            reelEls[i].classList.remove("spinning");
+            setReel(reelEls[i], symbol);
+          }, stopAt - startTime);
+        });
+
+        setTimeout(() => {
+          clearInterval(interval);
+          reelEls.forEach((el, i) => setReel(el, reels[i]));
+          resolve();
+        }, duration);
+      });
+    }
+
+    function showResult(prize, code) {
+      if (!prize.code) {
+        prizeName.textContent = prize.name;
+        prizeDesc.textContent = prize.desc;
+        promoCode.style.display = "none";
+      } else {
+        prizeName.textContent = prize.name;
+        prizeDesc.textContent = prize.desc;
+        promoCode.style.display = "inline-block";
+        promoCode.textContent = code;
+      }
+
+      // Подсветить выигрышные барабаны при 3 одинаковых
+      if (prize.match === 3) {
+        reelEls.forEach((el) => el.classList.add("win"));
+      }
+
+      result.classList.add("show");
+
+      // Тактильный отклик, если доступен
+      tg?.HapticFeedback?.notificationOccurred?.("success");
+    }
+
+    async function play() {
+      if (spinning) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      spinBtn.textContent = "Крутится...";
+
+      reelEls.forEach((el) => el.classList.remove("win"));
+
+      const { reels, prize } = generateSpin();
+      await animateSpin(reels);
+
+      const code = prize.code ? generateCode(prize.code) : null;
+
+      // Сохраняем результат локально
+      localStorage.setItem("logovo_last_spin", new Date().toISOString());
+      if (code) {
+        localStorage.setItem("logovo_last_code", code);
+      }
+
+      showResult(prize, code);
+
+      spinBtn.textContent = "Сыграно сегодня";
+      spinning = false;
+      // кнопку не разблокируем — 1 раз в день
+    }
+
+    // ── Проверка "уже играл сегодня?" ────────────
+    function alreadyPlayedToday() {
+      const last = localStorage.getItem("logovo_last_spin");
+      if (!last) return false;
+      const lastDate = new Date(last).toDateString();
+      const today = new Date().toDateString();
+      return lastDate === today;
+    }
+
+    function showWaitScreen() {
+      document.getElementById("gameScreen").style.display = "none";
+      document.getElementById("waitScreen").style.display = "block";
+
+      const code = localStorage.getItem("logovo_last_code");
+      if (code) {
+        const wait = document.querySelector("#waitScreen .wait");
+        const codeEl = document.createElement("div");
+        codeEl.className = "code";
+        codeEl.textContent = code;
+        codeEl.style.marginTop = "20px";
+        wait.appendChild(codeEl);
+      }
+    }
+
+    // ── Старт ────────────────────────────────────
+    if (alreadyPlayedToday()) {
+      showWaitScreen();
+    }
+
+    spinBtn.addEventListener("click", play);
+  </script>
+</body>
+</html>
